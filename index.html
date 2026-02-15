@@ -1,0 +1,64 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Dhruv Meet</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+  <style>
+    body { margin:0; font-family: Arial; display:flex; }
+    #videoSection { width:60%; background:black; }
+    video { width:100%; height:100vh; object-fit:cover; }
+    #chatSection { width:40%; display:flex; flex-direction:column; }
+    #messages { flex:1; overflow-y:auto; padding:10px; }
+    input { padding:10px; margin:5px; }
+  </style>
+</head>
+<body>
+
+<div id="videoSection">
+  <video id="localVideo" autoplay playsinline muted></video>
+  <video id="remoteVideo" autoplay playsinline></video>
+</div>
+
+<div id="chatSection">
+  <input id="roomInput" placeholder="Enter Room Code">
+  <button onclick="joinRoom()">Join</button>
+  <div id="messages"></div>
+  <input id="messageInput" placeholder="Type message">
+  <button onclick="sendMessage()">Send</button>
+</div>
+
+<script>
+  // Firebase config
+  const firebaseConfig = {
+    apiKey: "AIzaSyBbIz3lZ_OoD8kT3qdmVAcUBGsBqxoG1sE",
+    authDomain: "dhruv-meet.firebaseapp.com",
+    projectId: "dhruv-meet",
+    storageBucket: "dhruv-meet.firebasestorage.app",
+    messagingSenderId: "1010954867377",
+    appId: "1:1010954867377:web:f762df35eb935a9a4bc890",
+    measurementId: "G-C3TL3GKGXY"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+
+  let roomId;
+  let localStream;
+  let peerConnection;
+  const servers = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
+
+  async function joinRoom() {
+    roomId = document.getElementById("roomInput").value;
+    if (!roomId) return alert("Enter room code");
+
+    localStream = await navigator.mediaDevices.getUserMedia({ video:true, audio:true });
+    document.getElementById("localVideo").srcObject = localStream;
+
+    peerConnection = new RTCPeerConnection(servers);
+    localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+
+    peerConnection.ontrack = event => document.getElementById("remoteVideo").srcO
