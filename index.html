@@ -1,237 +1,222 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Dhruv Meet Pro</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <!-- Google Fonts -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
-  <!-- Firebase SDK -->
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
-  <style>
-    body { margin:0; font-family: 'Roboto', sans-serif; display:flex; height:100vh; }
-    #videoSection { width:65%; background:black; display:flex; flex-wrap:wrap; justify-content:center; align-items:center; padding:5px; box-sizing:border-box; }
-    video { width:48%; height:auto; margin:5px; border-radius:10px; background:black; }
-    #chatSection { width:35%; display:flex; flex-direction:column; background:#f1f1f1; padding:10px; box-sizing:border-box; }
-    #messages { flex:1; overflow-y:auto; background:#fff; padding:10px; border-radius:5px; margin-bottom:5px; }
-    input { padding:10px; margin:5px 0; border:1px solid #ccc; border-radius:5px; width:100%; box-sizing:border-box; }
-    button { background:#4CAF50; color:white; border:none; padding:10px; border-radius:5px; cursor:pointer; margin:5px 0; }
-    button:hover { background:#45a049; }
-    h2 { text-align:center; margin:5px 0; }
-    #controls { display:flex; justify-content:space-around; margin-top:5px; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dhruv Meet - WhatsApp Style</title>
+
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+
+<style>
+body { margin:0; font-family:'Roboto', sans-serif; display:flex; height:100vh; }
+#leftPanel { width:65%; background:#000; display:flex; flex-direction:column; padding:5px; box-sizing:border-box; }
+#rightPanel { width:35%; background:#f1f1f1; display:flex; flex-direction:column; padding:10px; box-sizing:border-box; }
+#videoContainer { display:flex; flex-wrap:wrap; justify-content:center; flex:1; }
+video { width:48%; margin:5px; border-radius:10px; background:black; }
+#controls { display:flex; justify-content:space-around; margin:5px 0; }
+#messages { flex:1; overflow-y:auto; background:#fff; padding:10px; border-radius:5px; margin-bottom:5px; }
+input { padding:10px; margin:5px 0; border:1px solid #ccc; border-radius:5px; width:100%; box-sizing:border-box; }
+button { background:#4CAF50; color:white; border:none; padding:10px; border-radius:5px; cursor:pointer; margin:5px 0; }
+button:hover { background:#45a049; }
+h2 { text-align:center; margin:5px 0; color:white; }
+</style>
 </head>
 <body>
 
-<div id="videoSection">
+<div id="leftPanel">
   <h2>Dhruv Meet</h2>
-</div>
-
-<div id="chatSection">
-  <input id="nameInput" placeholder="Your Name">
-  <input id="roomInput" placeholder="Room Code">
-  <div id="roomButtons">
-    <button onclick="createRoom()">Create Room</button>
-    <button onclick="joinRoom()">Join Room</button>
-  </div>
+  <div id="videoContainer"></div>
   <div id="controls">
     <button onclick="toggleMute()">Mute</button>
     <button onclick="flipCamera()">Flip Camera</button>
   </div>
+</div>
+
+<div id="rightPanel">
+  <input id="nameInput" placeholder="Your Name">
+  <input id="roomInput" placeholder="Room Code">
+  <button onclick="createRoom()">Create Room</button>
+  <button onclick="joinRoom()">Join Room</button>
   <div id="messages"></div>
   <input id="messageInput" placeholder="Type message">
   <button onclick="sendMessage()">Send</button>
 </div>
 
 <script>
-  // ---------- Firebase Config ----------
-  const firebaseConfig = {
-    apiKey: "YOUR_API_KEY",
-    authDomain: "dhruv-meet.firebaseapp.com",
-    projectId: "dhruv-meet",
-    storageBucket: "dhruv-meet.firebasestorage.app",
-    messagingSenderId: "YOUR_SENDER_ID",
-    appId: "YOUR_APP_ID",
-    measurementId: "YOUR_MEASUREMENT_ID"
-  };
-  firebase.initializeApp(firebaseConfig);
-  const db = firebase.firestore();
+// ---------- Firebase Config ----------
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "dhruv-meet.firebaseapp.com",
+  projectId: "dhruv-meet",
+  storageBucket: "dhruv-meet.firebasestorage.app",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID",
+  measurementId: "YOUR_MEASUREMENT_ID"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
 
-  // ---------- Global ----------
-  let localStream;
-  let peerConnections = {};
-  let roomId = null;
-  let localVideoTracks = [];
-  let isMuted = false;
-  let usingFrontCamera = true;
+// ---------- Global Variables ----------
+let localStream;
+let peerConnections = {};
+let roomId = null;
+let isMuted = false;
+let usingFrontCamera = true;
 
-  const videoSection = document.getElementById('videoSection');
-  const messagesDiv = document.getElementById('messages');
+const videoContainer = document.getElementById('videoContainer');
+const messagesDiv = document.getElementById('messages');
 
-  async function getMedia() {
-    if(localStream) localStream.getTracks().forEach(track => track.stop());
-    const constraints = {
-      video: { facingMode: usingFrontCamera ? "user" : "environment" },
-      audio: true
-    };
-    localStream = await navigator.mediaDevices.getUserMedia(constraints);
-    localVideoTracks = localStream.getVideoTracks();
-    addLocalVideo();
-  }
+// ---------- Functions ----------
+async function getMedia() {
+  if(localStream) localStream.getTracks().forEach(track => track.stop());
+  const constraints = { video:{ facingMode: usingFrontCamera ? "user":"environment" }, audio:true };
+  localStream = await navigator.mediaDevices.getUserMedia(constraints);
+  addLocalVideo();
+}
 
-  function addLocalVideo() {
-    let existing = document.getElementById('localVideo');
-    if(existing) { existing.srcObject = localStream; return; }
-    const vid = document.createElement('video');
-    vid.id = 'localVideo';
-    vid.autoplay = true;
-    vid.muted = true;
-    vid.playsInline = true;
-    vid.srcObject = localStream;
-    videoSection.appendChild(vid);
-  }
+function addLocalVideo() {
+  let existing = document.getElementById('localVideo');
+  if(existing) { existing.srcObject = localStream; return; }
+  const vid = document.createElement('video');
+  vid.id = 'localVideo';
+  vid.autoplay = true;
+  vid.muted = true;
+  vid.playsInline = true;
+  vid.srcObject = localStream;
+  videoContainer.appendChild(vid);
+}
 
-  async function createRoom() {
-    const name = document.getElementById('nameInput').value || 'Host';
-    roomId = Math.random().toString(36).substring(2,8); // generate 6 char code
-    document.getElementById('roomInput').value = roomId;
-    alert("Room Created. Share this code: " + roomId);
-    await getMedia();
-    setupFirestore(name);
-  }
+function addRemoteVideo(stream, id) {
+  let existing = document.getElementById('remote_'+id);
+  if(existing){ existing.srcObject = stream; return; }
+  const vid = document.createElement('video');
+  vid.id = 'remote_'+id;
+  vid.autoplay = true;
+  vid.playsInline = true;
+  vid.srcObject = stream;
+  videoContainer.appendChild(vid);
+}
 
-  async function joinRoom() {
-    const name = document.getElementById('nameInput').value || 'Guest';
-    roomId = document.getElementById('roomInput').value;
-    if(!roomId) return alert("Enter Room Code");
-    await getMedia();
-    setupFirestore(name);
-  }
+async function createRoom() {
+  const name = document.getElementById('nameInput').value || 'Host';
+  roomId = Math.random().toString(36).substring(2,8);
+  document.getElementById('roomInput').value = roomId;
+  alert("Room Created: " + roomId);
+  await getMedia();
+  setupFirestore(name);
+}
 
-  function setupFirestore(name){
-    const roomRef = db.collection('rooms').doc(roomId);
-    const usersRef = roomRef.collection('participants');
+async function joinRoom() {
+  const name = document.getElementById('nameInput').value || 'Guest';
+  roomId = document.getElementById('roomInput').value;
+  if(!roomId) return alert("Enter Room Code");
+  await getMedia();
+  setupFirestore(name);
+}
 
-    // Add self to participants
-    usersRef.add({ name:name });
+function setupFirestore(name) {
+  const roomRef = db.collection('rooms').doc(roomId);
+  const usersRef = roomRef.collection('participants');
 
-    // Listen for new participants
-    usersRef.onSnapshot(snapshot => {
-      snapshot.docChanges().forEach(async change => {
-        if(change.type === 'added'){
-          const otherId = change.doc.id;
-          if(!peerConnections[otherId] && change.doc.data().name !== name){
-            const pc = new RTCPeerConnection({iceServers:[{urls:"stun:stun.l.google.com:19302"}]});
-            peerConnections[otherId] = pc;
-            localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+  // Add self
+  usersRef.add({ name:name });
 
-            // Remote video
-            pc.ontrack = e => {
-              addRemoteVideo(e.streams[0], otherId, change.doc.data().name);
-            }
+  // Listen for participants
+  usersRef.onSnapshot(snapshot => {
+    snapshot.docChanges().forEach(async change => {
+      if(change.type==='added'){
+        const otherId = change.doc.id;
+        if(!peerConnections[otherId] && change.doc.data().name !== name){
+          const pc = new RTCPeerConnection({iceServers:[{urls:"stun:stun.l.google.com:19302"}]});
+          peerConnections[otherId] = pc;
+          localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
 
-            // ICE
-            pc.onicecandidate = e => {
-              if(e.candidate){
-                roomRef.collection('candidates').add({ candidate: e.candidate.toJSON(), to: otherId, from: name });
-              }
-            }
-
-            // Create offer
-            const offer = await pc.createOffer();
-            await pc.setLocalDescription(offer);
-            roomRef.collection('offers').add({ offer: JSON.stringify(offer), to: otherId, from: name });
+          pc.ontrack = e => addRemoteVideo(e.streams[0], otherId);
+          pc.onicecandidate = e => {
+            if(e.candidate) roomRef.collection('candidates').add({candidate:e.candidate.toJSON(), to:otherId, from:name});
           }
+
+          const offer = await pc.createOffer();
+          await pc.setLocalDescription(offer);
+          roomRef.collection('offers').add({offer:JSON.stringify(offer), to:otherId, from:name});
         }
-      });
+      }
     });
+  });
 
-    // Listen for offers
-    roomRef.collection('offers').onSnapshot(snapshot => {
-      snapshot.docChanges().forEach(async change=>{
-        if(change.type==='added'){
-          const data = change.doc.data();
-          if(data.to===name){
-            const pc = new RTCPeerConnection({iceServers:[{urls:"stun:stun.l.google.com:19302"}]});
-            peerConnections[data.from] = pc;
-            localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
-
-            pc.ontrack = e => { addRemoteVideo(e.streams[0], data.from, data.from); }
-            pc.onicecandidate = e => { if(e.candidate) roomRef.collection('candidates').add({candidate:e.candidate.toJSON(), to:data.from, from:name}) }
-
-            await pc.setRemoteDescription(JSON.parse(data.offer));
-            const answer = await pc.createAnswer();
-            await pc.setLocalDescription(answer);
-            roomRef.collection('answers').add({ answer: JSON.stringify(answer), to: data.from, from: name });
-          }
-        }
-      });
-    });
-
-    // Listen for answers
-    roomRef.collection('answers').onSnapshot(snapshot => {
-      snapshot.docChanges().forEach(async change=>{
-        if(change.type==='added'){
-          const data = change.doc.data();
-          if(peerConnections[data.to]){
-            await peerConnections[data.to].setRemoteDescription(JSON.parse(data.answer));
-          }
-        }
-      });
-    });
-
-    // Listen for ICE candidates
-    roomRef.collection('candidates').onSnapshot(snapshot=>{
-      snapshot.docChanges().forEach(async change=>{
+  // Listen for offers
+  roomRef.collection('offers').onSnapshot(snapshot => {
+    snapshot.docChanges().forEach(async change=>{
+      if(change.type==='added'){
         const data = change.doc.data();
-        if(peerConnections[data.to]) await peerConnections[data.to].addIceCandidate(new RTCIceCandidate(data.candidate));
-      });
-    });
+        if(data.to===name){
+          const pc = new RTCPeerConnection({iceServers:[{urls:"stun:stun.l.google.com:19302"}]});
+          peerConnections[data.from] = pc;
+          localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+          pc.ontrack = e => addRemoteVideo(e.streams[0], data.from);
+          pc.onicecandidate = e => { if(e.candidate) roomRef.collection('candidates').add({candidate:e.candidate.toJSON(), to:data.from, from:name}); }
 
-    // Chat listener
-    roomRef.collection('messages').onSnapshot(snapshot=>{
-      snapshot.docChanges().forEach(change=>{
-        if(change.type==='added'){
-          const msg = document.createElement('div');
-          msg.innerText = change.doc.data().name + ": " + change.doc.data().text;
-          messagesDiv.appendChild(msg);
-          msg.scrollIntoView({behavior:'smooth'});
+          await pc.setRemoteDescription(JSON.parse(data.offer));
+          const answer = await pc.createAnswer();
+          await pc.setLocalDescription(answer);
+          roomRef.collection('answers').add({answer:JSON.stringify(answer), to:data.from, from:name});
         }
-      });
+      }
     });
-  }
+  });
 
-  function addRemoteVideo(stream, id, name){
-    let existing = document.getElementById('remote_'+id);
-    if(existing){ existing.srcObject = stream; return; }
-    const vid = document.createElement('video');
-    vid.id = 'remote_'+id;
-    vid.autoplay = true;
-    vid.playsInline = true;
-    vid.srcObject = stream;
-    videoSection.appendChild(vid);
-  }
+  // Listen for answers
+  roomRef.collection('answers').onSnapshot(snapshot=>{
+    snapshot.docChanges().forEach(async change=>{
+      const data = change.doc.data();
+      if(peerConnections[data.to]) await peerConnections[data.to].setRemoteDescription(JSON.parse(data.answer));
+    });
+  });
 
-  function sendMessage(){
-    const msg = document.getElementById('messageInput').value;
-    const name = document.getElementById('nameInput').value || 'Guest';
-    if(!msg) return;
-    db.collection('rooms').doc(roomId).collection('messages').add({text:msg, name:name});
-    document.getElementById('messageInput').value='';
-  }
+  // Listen for ICE candidates
+  roomRef.collection('candidates').onSnapshot(snapshot=>{
+    snapshot.docChanges().forEach(async change=>{
+      const data = change.doc.data();
+      if(peerConnections[data.to]) await peerConnections[data.to].addIceCandidate(new RTCIceCandidate(data.candidate));
+    });
+  });
 
-  function toggleMute(){
-    isMuted = !isMuted;
-    localStream.getAudioTracks().forEach(track=>track.enabled=!isMuted);
-    alert(isMuted ? "Muted" : "Unmuted");
-  }
+  // Listen for chat messages
+  roomRef.collection('messages').onSnapshot(snapshot=>{
+    snapshot.docChanges().forEach(change=>{
+      if(change.type==='added'){
+        const msg = document.createElement('div');
+        msg.innerText = change.doc.data().name + ": " + change.doc.data().text;
+        messagesDiv.appendChild(msg);
+        msg.scrollIntoView({behavior:'smooth'});
+      }
+    });
+  });
+}
 
-  async function flipCamera(){
-    usingFrontCamera = !usingFrontCamera;
-    await getMedia();
-  }
+function sendMessage(){
+  const msg = document.getElementById('messageInput').value;
+  const name = document.getElementById('nameInput').value || 'Guest';
+  if(!msg) return;
+  db.collection('rooms').doc(roomId).collection('messages').add({text:msg, name:name});
+  document.getElementById('messageInput').value='';
+}
+
+function toggleMute(){
+  isMuted = !isMuted;
+  localStream.getAudioTracks().forEach(track=>track.enabled=!isMuted);
+}
+
+async function flipCamera(){
+  usingFrontCamera = !usingFrontCamera;
+  await getMedia();
+}
 </script>
+
 </body>
 </html>
