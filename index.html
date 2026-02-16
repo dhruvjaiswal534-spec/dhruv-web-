@@ -3,6 +3,47 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Firebase Test</title>
+</head>
+<body>
+<h1>Firebase Test Page</h1>
+<p id="status">Connecting...</p>
+
+<!-- Firebase SDKs -->
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-analytics-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+
+<script>
+  // Your Firebase config
+  const firebaseConfig = {
+    apiKey: "AIzaSyC_oqL7AMYMpIskO2zM0jNZXRZVYaPoinU",
+    authDomain: "my-talk-bd6ec.firebaseapp.com",
+    projectId: "my-talk-bd6ec",
+    storageBucket: "my-talk-bd6ec.firebasestorage.app",
+    messagingSenderId: "624248617954",
+    appId: "1:624248617954:web:5b53457f5de11ce15557bb",
+    measurementId: "G-BS2M2WK0MF"
+  };
+
+  // Initialize Firebase
+  const app = firebase.initializeApp(firebaseConfig);
+  const analytics = firebase.analytics();
+  const db = firebase.firestore();
+
+  // Test connection by adding a document
+  db.collection('test').add({message:"Firebase Connected!"})
+    .then(()=> document.getElementById('status').innerText = "✅ Firebase is working!")
+    .catch(err=> document.getElementById('status').innerText = "❌ Error: "+err);
+</script>
+</body>
+</html>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Dhruv Talk - Landing</title>
 <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
 <style>
