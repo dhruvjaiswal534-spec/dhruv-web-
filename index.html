@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Dhruv Meet - WhatsApp Style</title>
+<title>Dhruv Talk Web</title>
 
 <!-- Google Fonts -->
 <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
@@ -11,6 +11,7 @@
 <!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-analytics-compat.js"></script>
 
 <style>
 body { margin:0; font-family:'Roboto', sans-serif; display:flex; height:100vh; }
@@ -29,7 +30,7 @@ h2 { text-align:center; margin:5px 0; color:white; }
 <body>
 
 <div id="leftPanel">
-  <h2>Dhruv Meet</h2>
+  <h2>Dhruv Talk</h2>
   <div id="videoContainer"></div>
   <div id="controls">
     <button onclick="toggleMute()">Mute</button>
@@ -50,38 +51,38 @@ h2 { text-align:center; margin:5px 0; color:white; }
 <script>
 // ---------- Firebase Config ----------
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "dhruv-meet.firebaseapp.com",
-  projectId: "dhruv-meet",
-  storageBucket: "dhruv-meet.firebasestorage.app",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID",
-  measurementId: "YOUR_MEASUREMENT_ID"
+  apiKey: "AIzaSyCYPUUaXG0cf8vyEJHu935LP3fULHxu8B8",
+  authDomain: "talk-web-3a27f.firebaseapp.com",
+  projectId: "talk-web-3a27f",
+  storageBucket: "talk-web-3a27f.firebasestorage.app",
+  messagingSenderId: "586412558112",
+  appId: "1:586412558112:web:b267114cf10c3ca86a7945",
+  measurementId: "G-7C3SVSWSZH"
 };
 firebase.initializeApp(firebaseConfig);
+const analytics = firebase.analytics();
 const db = firebase.firestore();
 
-// ---------- Global Variables ----------
+// ---------- Global ----------
 let localStream;
 let peerConnections = {};
 let roomId = null;
 let isMuted = false;
 let usingFrontCamera = true;
-
 const videoContainer = document.getElementById('videoContainer');
 const messagesDiv = document.getElementById('messages');
 
 // ---------- Functions ----------
 async function getMedia() {
-  if(localStream) localStream.getTracks().forEach(track => track.stop());
-  const constraints = { video:{ facingMode: usingFrontCamera ? "user":"environment" }, audio:true };
+  if(localStream) localStream.getTracks().forEach(track=>track.stop());
+  const constraints = {video:{facingMode:usingFrontCamera?"user":"environment"}, audio:true};
   localStream = await navigator.mediaDevices.getUserMedia(constraints);
   addLocalVideo();
 }
 
 function addLocalVideo() {
   let existing = document.getElementById('localVideo');
-  if(existing) { existing.srcObject = localStream; return; }
+  if(existing){ existing.srcObject=localStream; return; }
   const vid = document.createElement('video');
   vid.id = 'localVideo';
   vid.autoplay = true;
@@ -91,27 +92,27 @@ function addLocalVideo() {
   videoContainer.appendChild(vid);
 }
 
-function addRemoteVideo(stream, id) {
+function addRemoteVideo(stream,id){
   let existing = document.getElementById('remote_'+id);
-  if(existing){ existing.srcObject = stream; return; }
+  if(existing){ existing.srcObject=stream; return; }
   const vid = document.createElement('video');
-  vid.id = 'remote_'+id;
-  vid.autoplay = true;
-  vid.playsInline = true;
-  vid.srcObject = stream;
+  vid.id='remote_'+id;
+  vid.autoplay=true;
+  vid.playsInline=true;
+  vid.srcObject=stream;
   videoContainer.appendChild(vid);
 }
 
-async function createRoom() {
+async function createRoom(){
   const name = document.getElementById('nameInput').value || 'Host';
   roomId = Math.random().toString(36).substring(2,8);
-  document.getElementById('roomInput').value = roomId;
-  alert("Room Created: " + roomId);
+  document.getElementById('roomInput').value=roomId;
+  alert("Room Created: "+roomId);
   await getMedia();
   setupFirestore(name);
 }
 
-async function joinRoom() {
+async function joinRoom(){
   const name = document.getElementById('nameInput').value || 'Guest';
   roomId = document.getElementById('roomInput').value;
   if(!roomId) return alert("Enter Room Code");
@@ -119,52 +120,52 @@ async function joinRoom() {
   setupFirestore(name);
 }
 
-function setupFirestore(name) {
-  const roomRef = db.collection('rooms').doc(roomId);
-  const usersRef = roomRef.collection('participants');
+function setupFirestore(name){
+  const roomRef=db.collection('rooms').doc(roomId);
+  const usersRef=roomRef.collection('participants');
 
   // Add self
-  usersRef.add({ name:name });
+  usersRef.add({name:name});
 
   // Listen for participants
-  usersRef.onSnapshot(snapshot => {
-    snapshot.docChanges().forEach(async change => {
+  usersRef.onSnapshot(snapshot=>{
+    snapshot.docChanges().forEach(async change=>{
       if(change.type==='added'){
-        const otherId = change.doc.id;
-        if(!peerConnections[otherId] && change.doc.data().name !== name){
+        const otherId=change.doc.id;
+        if(!peerConnections[otherId] && change.doc.data().name!==name){
           const pc = new RTCPeerConnection({iceServers:[{urls:"stun:stun.l.google.com:19302"}]});
-          peerConnections[otherId] = pc;
-          localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+          peerConnections[otherId]=pc;
+          localStream.getTracks().forEach(track=>pc.addTrack(track,localStream));
 
-          pc.ontrack = e => addRemoteVideo(e.streams[0], otherId);
-          pc.onicecandidate = e => {
-            if(e.candidate) roomRef.collection('candidates').add({candidate:e.candidate.toJSON(), to:otherId, from:name});
+          pc.ontrack=e=>addRemoteVideo(e.streams[0],otherId);
+          pc.onicecandidate=e=>{
+            if(e.candidate) roomRef.collection('candidates').add({candidate:e.candidate.toJSON(),to:otherId,from:name});
           }
 
           const offer = await pc.createOffer();
           await pc.setLocalDescription(offer);
-          roomRef.collection('offers').add({offer:JSON.stringify(offer), to:otherId, from:name});
+          roomRef.collection('offers').add({offer:JSON.stringify(offer),to:otherId,from:name});
         }
       }
     });
   });
 
   // Listen for offers
-  roomRef.collection('offers').onSnapshot(snapshot => {
+  roomRef.collection('offers').onSnapshot(snapshot=>{
     snapshot.docChanges().forEach(async change=>{
       if(change.type==='added'){
-        const data = change.doc.data();
+        const data=change.doc.data();
         if(data.to===name){
-          const pc = new RTCPeerConnection({iceServers:[{urls:"stun:stun.l.google.com:19302"}]});
-          peerConnections[data.from] = pc;
-          localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
-          pc.ontrack = e => addRemoteVideo(e.streams[0], data.from);
-          pc.onicecandidate = e => { if(e.candidate) roomRef.collection('candidates').add({candidate:e.candidate.toJSON(), to:data.from, from:name}); }
+          const pc=new RTCPeerConnection({iceServers:[{urls:"stun:stun.l.google.com:19302"}]});
+          peerConnections[data.from]=pc;
+          localStream.getTracks().forEach(track=>pc.addTrack(track,localStream));
+          pc.ontrack=e=>addRemoteVideo(e.streams[0],data.from);
+          pc.onicecandidate=e=>{ if(e.candidate) roomRef.collection('candidates').add({candidate:e.candidate.toJSON(),to:data.from,from:name}); }
 
           await pc.setRemoteDescription(JSON.parse(data.offer));
           const answer = await pc.createAnswer();
           await pc.setLocalDescription(answer);
-          roomRef.collection('answers').add({answer:JSON.stringify(answer), to:data.from, from:name});
+          roomRef.collection('answers').add({answer:JSON.stringify(answer),to:data.from,from:name});
         }
       }
     });
@@ -173,25 +174,25 @@ function setupFirestore(name) {
   // Listen for answers
   roomRef.collection('answers').onSnapshot(snapshot=>{
     snapshot.docChanges().forEach(async change=>{
-      const data = change.doc.data();
+      const data=change.doc.data();
       if(peerConnections[data.to]) await peerConnections[data.to].setRemoteDescription(JSON.parse(data.answer));
     });
   });
 
-  // Listen for ICE candidates
+  // Listen ICE candidates
   roomRef.collection('candidates').onSnapshot(snapshot=>{
     snapshot.docChanges().forEach(async change=>{
-      const data = change.doc.data();
+      const data=change.doc.data();
       if(peerConnections[data.to]) await peerConnections[data.to].addIceCandidate(new RTCIceCandidate(data.candidate));
     });
   });
 
-  // Listen for chat messages
+  // Listen chat
   roomRef.collection('messages').onSnapshot(snapshot=>{
     snapshot.docChanges().forEach(change=>{
       if(change.type==='added'){
-        const msg = document.createElement('div');
-        msg.innerText = change.doc.data().name + ": " + change.doc.data().text;
+        const msg=document.createElement('div');
+        msg.innerText=change.doc.data().name+": "+change.doc.data().text;
         messagesDiv.appendChild(msg);
         msg.scrollIntoView({behavior:'smooth'});
       }
@@ -200,23 +201,22 @@ function setupFirestore(name) {
 }
 
 function sendMessage(){
-  const msg = document.getElementById('messageInput').value;
-  const name = document.getElementById('nameInput').value || 'Guest';
+  const msg=document.getElementById('messageInput').value;
+  const name=document.getElementById('nameInput').value||'Guest';
   if(!msg) return;
-  db.collection('rooms').doc(roomId).collection('messages').add({text:msg, name:name});
+  db.collection('rooms').doc(roomId).collection('messages').add({text:msg,name:name});
   document.getElementById('messageInput').value='';
 }
 
 function toggleMute(){
-  isMuted = !isMuted;
+  isMuted=!isMuted;
   localStream.getAudioTracks().forEach(track=>track.enabled=!isMuted);
 }
 
 async function flipCamera(){
-  usingFrontCamera = !usingFrontCamera;
+  usingFrontCamera=!usingFrontCamera;
   await getMedia();
 }
 </script>
-
 </body>
 </html>
